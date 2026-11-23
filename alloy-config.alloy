@@ -1,0 +1,40 @@
+local.file_match "openssh" {
+  path_targets = [
+    {
+      __path__     = "/var/log/datasets/openssh.log",
+      job          = "ssh",
+      service_name = "ssh",
+      host         = "demo",
+    },
+  ]
+}
+
+loki.source.file "openssh" {
+  targets    = local.file_match.openssh.targets
+  forward_to = [loki.process.openssh.receiver]
+}
+
+loki.process "openssh" {
+  stage.regex {
+    expression = "^(?P<ts>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})"
+  }
+
+  stage.template {
+    source   = "ts_full"
+    template = "{{ .ts }} 2026"
+  }
+
+  stage.timestamp {
+    source            = "ts_full"
+    format            = "Jan 2 15:04:05 2006"
+    action_on_failure = "skip"
+  }
+
+  forward_to = [loki.write.to_loki.receiver]
+}
+
+loki.write "to_loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

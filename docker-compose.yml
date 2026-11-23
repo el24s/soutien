@@ -1,0 +1,50 @@
+services:
+  loki:
+    image: grafana/loki:3.6
+    container_name: loki
+    environment:
+      - TZ=UTC
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+
+  alloy:
+    image: grafana/alloy:v1.12.2
+    container_name: alloy
+    environment:
+      - TZ=UTC
+    command: [
+      "run",
+      "--storage.path=/var/lib/alloy",
+      "/etc/alloy/config.alloy"
+    ]
+    volumes:
+      - ./alloy-config.alloy:/etc/alloy/config.alloy:ro
+      - ./openssh.log:/var/log/datasets/openssh.log:ro
+      - alloy_data:/var/lib/alloy
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:12.3
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - TZ=UTC
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+
+volumes:
+  loki_data: {}
+  grafana_data: {}
+  alloy_data: {}
